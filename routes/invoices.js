@@ -2,6 +2,8 @@ const express = require("express");
 const db = require("../db");
 const { NotFoundError } = require("../expressError");
 
+const moment = require("moment");
+
 const router = new express.Router();
 
 
@@ -39,11 +41,32 @@ router.post("/", async (req, res) => {
 
 
 router.put("/:id", async (req, res) => {
-  let result = await db.query(`UPDATE invoices
-                                SET amt = $1
-                                WHERE id = $2
-                                RETURNING id, comp_code, amt, paid, add_date, paid_date`,
-                                [req.body.amt, req.params.id]);
+  let paidDate;
+  let result;
+  if (req.body.paid === true){
+    result = await db.query(`UPDATE invoices
+                            SET amt = $1,
+                                paid_date = now(),
+                                paid = ${req.body.paid}
+                            WHERE id = $2
+                            RETURNING id, comp_code, amt, paid, add_date, paid_date`,
+                            [req.body.amt, req.params.id]);
+  } else if (req.body.paid === false){
+    result = await db.query(`UPDATE invoices
+                          SET amt = $1,
+                              paid_date = null,
+                              paid = ${req.body.paid}
+                          WHERE id = $2
+                          RETURNING id, comp_code, amt, paid, add_date, paid_date`,
+                          [req.body.amt, req.params.id]);
+  } else {
+
+  result = await db.query(`UPDATE invoices
+                              SET amt = $1
+                              WHERE id = $2
+                              RETURNING id, comp_code, amt, paid, add_date, paid_date`,
+                              [req.body.amt, req.params.id]);
+  }
   if (!result.rows[0]){
     throw new NotFoundError("Invoice id was not found");
   }
